@@ -72,7 +72,41 @@ Earth Engine requires a Google account with Earth Engine access. Authenticate on
 - Treat Dynamic World labels as model-generated labels and inspect them before training.
 - Keep raw data and large model files out of Git.
 
-## Status
+## Current milestone
 
-Repository scaffold created. Region and dates are not selected yet.
+The first dependency-light pipeline is implemented:
+
+- NDVI calculation and threshold baseline
+- Forest-class IoU, F1, precision, recall, and pixel accuracy
+- 256×256 tiling utilities
+- Contiguous geographic train/validation/test splits
+- Multi-date clearing detection with small-patch filtering
+- Cleared-area calculation in hectares
+- Synthetic end-to-end demo and automated tests
+
+Run the demo without downloading satellite data:
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m deforestation_detection demo --output outputs/demo
+```
+
+Run the tests:
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m unittest discover -s tests -v
+```
+
+The example pilot configuration is in `configs/rondonia_example.yaml`. Its area
+and dates are intentionally a starting point and should be inspected in Earth
+Engine before a large imagery export.
+
+## Next milestone
+
+1. Authenticate a Google Earth Engine account.
+2. Inspect and finalize the pilot area and two same-season date windows.
+3. Export cloud-masked Sentinel-2 composites and Dynamic World tree labels.
+4. Run the NDVI baseline on the exported rasters.
+5. Add the U-Net dataset loader and training loop after validating the labels.
 

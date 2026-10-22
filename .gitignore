@@ -17,6 +17,12 @@ venv/
 data/**
 models/**
 outputs/**
+*.npy
+*.npz
+*.tif
+*.tiff
+*.pt
+*.pth
 !data/.gitkeep
 !models/.gitkeep
 !outputs/.gitkeep

@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deforestation-detection"
+version = "0.1.0"
+description = "Forest segmentation and multi-date deforestation detection from Sentinel-2 imagery."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+geo = [
+    "earthengine-api",
+    "folium",
+    "geemap",
+    "rasterio",
+]
+ml = [
+    "albumentations",
+    "segmentation-models-pytorch",
+    "torch",
+    "torchvision",
+]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[project.scripts]
+deforestation-detection = "deforestation_detection.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+
