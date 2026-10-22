@@ -58,6 +58,22 @@ def remove_small_patches(
         raise ValueError("mask must be a two-dimensional array")
 
     offsets = _neighbor_offsets(connectivity)
+    try:
+        from scipy import ndimage
+    except ImportError:
+        ndimage = None
+
+    if ndimage is not None:
+        structure = ndimage.generate_binary_structure(2, 1 if connectivity == 4 else 2)
+        labels, component_count = ndimage.label(source, structure=structure)
+        if component_count == 0:
+            return np.zeros(source.shape, dtype=bool), ()
+        sizes = np.bincount(labels.ravel())[1:]
+        kept_labels = np.flatnonzero(sizes >= minimum_pixels) + 1
+        filtered = np.isin(labels, kept_labels)
+        kept_sizes = tuple(sorted((int(sizes[index - 1]) for index in kept_labels), reverse=True))
+        return filtered, kept_sizes
+
     visited = np.zeros(source.shape, dtype=bool)
     filtered = np.zeros(source.shape, dtype=bool)
     kept_sizes: list[int] = []

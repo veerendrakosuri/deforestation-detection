@@ -8,7 +8,9 @@ __pycache__/
 
 # Virtual environments
 .venv/
+.venv*/
 venv/
+.deps/
 
 # Notebooks
 .ipynb_checkpoints/
@@ -23,6 +25,7 @@ outputs/**
 *.tiff
 *.pt
 *.pth
+*.html
 !data/.gitkeep
 !models/.gitkeep
 !outputs/.gitkeep

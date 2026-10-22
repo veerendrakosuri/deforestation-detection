@@ -16,11 +16,11 @@ dependencies = [
 geo = [
     "earthengine-api",
     "folium",
-    "geemap",
+    "Pillow",
     "rasterio",
+    "scipy",
 ]
 ml = [
-    "albumentations",
     "segmentation-models-pytorch",
     "torch",
     "torchvision",

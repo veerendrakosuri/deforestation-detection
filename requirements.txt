@@ -1,16 +1,11 @@
 earthengine-api
-geemap
 folium
+Pillow
 numpy
-pandas
 scipy
 rasterio
-matplotlib
-scikit-learn
 torch
 torchvision
 segmentation-models-pytorch
-albumentations
-tqdm
 PyYAML
 

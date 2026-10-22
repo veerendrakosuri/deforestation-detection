@@ -59,6 +59,30 @@ def binary_segmentation_metrics(
     false_negative = int(np.count_nonzero(~predicted & expected))
     true_negative = int(np.count_nonzero(~predicted & ~expected))
 
+    return binary_metrics_from_counts(
+        true_positive=true_positive,
+        false_positive=false_positive,
+        false_negative=false_negative,
+        true_negative=true_negative,
+    )
+
+
+def binary_metrics_from_counts(
+    *,
+    true_positive: int,
+    false_positive: int,
+    false_negative: int,
+    true_negative: int,
+) -> BinaryMetrics:
+    """Build segmentation metrics from accumulated confusion counts."""
+
+    counts = (true_positive, false_positive, false_negative, true_negative)
+    if any(value < 0 for value in counts):
+        raise ValueError("confusion counts cannot be negative")
+    total = sum(counts)
+    if total == 0:
+        raise ValueError("at least one evaluated pixel is required")
+
     precision_denominator = true_positive + false_positive
     precision = (
         true_positive / precision_denominator
@@ -71,7 +95,7 @@ def binary_segmentation_metrics(
     f1 = (2 * true_positive / f1_denominator) if f1_denominator else 1.0
     iou_denominator = true_positive + false_positive + false_negative
     iou = true_positive / iou_denominator if iou_denominator else 1.0
-    pixel_accuracy = (true_positive + true_negative) / predicted.size
+    pixel_accuracy = (true_positive + true_negative) / total
 
     return BinaryMetrics(
         true_positive=true_positive,

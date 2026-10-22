@@ -6,14 +6,14 @@ An end-to-end machine-learning project that maps forest cover from Sentinel-2 im
 
 Build and evaluate a U-Net forest-segmentation model, compare it with an NDVI threshold baseline, and estimate the area of newly cleared forest.
 
-## Planned stack
+## Stack
 
 - Python
 - Google Earth Engine
 - Sentinel-2 Level-2A imagery and Dynamic World forest labels
-- NumPy, rasterio, SciPy, and pandas
+- NumPy and rasterio
 - PyTorch and segmentation-models-pytorch
-- folium/geemap for interactive maps
+- folium for interactive maps
 
 ## Repository layout
 
@@ -25,22 +25,25 @@ models/               Trained checkpoints (not tracked by Git)
 notebooks/            Exploration and experiments
 outputs/              Metrics, figures, and generated maps
 src/
-  deforestation_detection/
+  deforestation_detection/ Core pipeline, model, training, and CLI
+configs/              Real-data and smoke-test configurations
+docs/                 Methodology and real-data runbook
+scripts/              Complete synthetic integration test
 tests/                Automated tests
 ```
 
-## Build roadmap
+## Implemented workflow
 
-1. Choose one region and two dates from the same season in different years.
-2. Create cloud- and shadow-masked Sentinel-2 median composites in Earth Engine.
-3. Export six bands: blue, green, red, near-infrared, and two shortwave-infrared bands.
-4. Export Dynamic World's `trees` class for the same area and inspect sample labels manually.
-5. Build an NDVI baseline and record forest-class IoU and F1.
-6. Tile rasters into 256×256 samples and split them by geographic block.
-7. Train a U-Net with a ResNet-34 encoder using Dice plus binary cross-entropy loss.
-8. Evaluate on a held-out geographic area and inspect failure cases.
-9. Compare predictions between dates, remove cleared patches smaller than 50 pixels (about 0.5 ha at 10 m), and calculate hectares cleared.
-10. Publish an interactive before/after map with cleared areas highlighted in red.
+1. Build cloud- and shadow-masked, same-season Sentinel-2 median composites in Earth Engine.
+2. Export six imagery bands and Dynamic World tree labels as aligned cloud-optimized GeoTIFFs.
+3. Evaluate a thresholded NDVI baseline.
+4. Tile rasters and create contiguous geographic train, validation, and test blocks.
+5. Calculate normalization statistics from training pixels only.
+6. Train a six-channel U-Net using Dice plus BCE-with-logits loss.
+7. Select the checkpoint by validation IoU and report held-out test metrics.
+8. Run sliding-window prediction on both dates.
+9. Remove clearing patches smaller than 50 pixels and calculate cleared hectares.
+10. Save an interactive before/after map with clearing highlighted in red.
 
 ## Evaluation
 
@@ -64,6 +67,51 @@ pip install -r requirements.txt
 
 Earth Engine requires a Google account with Earth Engine access. Authenticate only when you are ready to download imagery.
 
+## Verify the complete pipeline
+
+The smoke test generates aligned synthetic GeoTIFFs, trains the compact U-Net,
+runs inference on two dates, detects clearing, and writes an interactive map:
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts/run_smoke_test.py
+```
+
+Its outputs are written to `outputs/smoke_test/`. These results verify the
+software only; they are deliberately synthetic and must not be presented as
+real deforestation findings.
+
+Latest verified synthetic run:
+
+| Check | Result |
+|---|---:|
+| Held-out U-Net IoU | 0.9611 |
+| Held-out U-Net F1 | 0.9801 |
+| Known clearing | 27.52 ha |
+| Detected clearing | 26.31 ha |
+
+Run the automated tests:
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m unittest discover -s tests -v
+```
+
+## Run with real data
+
+Follow [`docs/RUNBOOK.md`](docs/RUNBOOK.md). After the Earth Engine exports are
+downloaded, the complete local pipeline is one command:
+
+```powershell
+python -m deforestation_detection workflow `
+  --before-imagery data/raw/rondonia-pilot_before_sentinel2.tif `
+  --before-labels data/raw/rondonia-pilot_before_forest_label.tif `
+  --after-imagery data/raw/rondonia-pilot_after_sentinel2.tif `
+  --after-labels data/raw/rondonia-pilot_after_forest_label.tif `
+  --config configs/rondonia_example.yaml `
+  --output outputs/rondonia
+```
+
 ## Important evaluation rules
 
 - Use dates from the same season.
@@ -72,41 +120,13 @@ Earth Engine requires a Google account with Earth Engine access. Authenticate on
 - Treat Dynamic World labels as model-generated labels and inspect them before training.
 - Keep raw data and large model files out of Git.
 
-## Current milestone
+## Project status
 
-The first dependency-light pipeline is implemented:
+The codebase is complete and passes its local unit and end-to-end smoke tests.
+Real-data metrics remain `TBD` because Earth Engine authentication, imagery
+export, manual label inspection, and GPU training must be performed against the
+selected pilot area before any result can be claimed honestly.
 
-- NDVI calculation and threshold baseline
-- Forest-class IoU, F1, precision, recall, and pixel accuracy
-- 256×256 tiling utilities
-- Contiguous geographic train/validation/test splits
-- Multi-date clearing detection with small-patch filtering
-- Cleared-area calculation in hectares
-- Synthetic end-to-end demo and automated tests
-
-Run the demo without downloading satellite data:
-
-```powershell
-$env:PYTHONPATH = "src"
-python -m deforestation_detection demo --output outputs/demo
-```
-
-Run the tests:
-
-```powershell
-$env:PYTHONPATH = "src"
-python -m unittest discover -s tests -v
-```
-
-The example pilot configuration is in `configs/rondonia_example.yaml`. Its area
-and dates are intentionally a starting point and should be inspected in Earth
-Engine before a large imagery export.
-
-## Next milestone
-
-1. Authenticate a Google Earth Engine account.
-2. Inspect and finalize the pilot area and two same-season date windows.
-3. Export cloud-masked Sentinel-2 composites and Dynamic World tree labels.
-4. Run the NDVI baseline on the exported rasters.
-5. Add the U-Net dataset loader and training loop after validating the labels.
+See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for evaluation details and
+limitations. The example pilot configuration is `configs/rondonia_example.yaml`.
 
