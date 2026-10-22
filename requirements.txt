@@ -1,0 +1,16 @@
+earthengine-api
+geemap
+folium
+numpy
+pandas
+scipy
+rasterio
+matplotlib
+scikit-learn
+torch
+torchvision
+segmentation-models-pytorch
+albumentations
+tqdm
+PyYAML
+

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Local data, model weights, and generated artifacts
+data/**
+models/**
+outputs/**
+!data/.gitkeep
+!models/.gitkeep
+!outputs/.gitkeep
+
+# Earth Engine and local secrets
+.env
+*.json
+!.vscode/*.json
+
+# Editors and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
