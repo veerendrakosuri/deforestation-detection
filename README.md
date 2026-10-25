@@ -51,8 +51,15 @@ Report forest-class IoU and F1 on held-out geographic areas for both the NDVI ba
 
 | Model | Forest IoU | Forest F1 |
 |---|---:|---:|
-| NDVI baseline | TBD | TBD |
-| U-Net | TBD | TBD |
+| NDVI baseline | 0.9109 | 0.9534 |
+| U-Net | 0.9529 | 0.9759 |
+
+These values are from the geographically held-out eight-tile test strip in the
+Rondonia pilot. The selected U-Net checkpoint was epoch 30, with validation IoU
+0.9446. The multi-date prediction flagged 2,326.06 ha in 344 patches; the
+corresponding Dynamic World label masks contain 2,319.68 ha in 338 patches.
+Agreement between those two change masks is IoU 0.7444. These are screening
+results against model-generated labels, not field-verified deforestation claims.
 
 ## Setup
 
@@ -122,10 +129,11 @@ python -m deforestation_detection workflow `
 
 ## Project status
 
-The codebase is complete and passes its local unit and end-to-end smoke tests.
-Real-data metrics remain `TBD` because Earth Engine authentication, imagery
-export, manual label inspection, and GPU training must be performed against the
-selected pilot area before any result can be claimed honestly.
+The codebase is complete and passes 14 local unit tests plus the synthetic
+end-to-end smoke test. The real Rondonia pilot was exported from Earth Engine,
+reviewed across 50 image/label tiles, trained for 30 epochs on CPU, evaluated on
+a geographically held-out strip, and run through prediction and change mapping.
+Raw imagery, checkpoints, and generated outputs remain excluded from Git.
 
 See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for evaluation details and
 limitations. The example pilot configuration is `configs/rondonia_example.yaml`.

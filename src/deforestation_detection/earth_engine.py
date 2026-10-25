@@ -50,7 +50,7 @@ def _mask_sentinel2(image: Any, bands: tuple[str, ...]) -> Any:
         .And(scl.neq(10))
         .And(scl.neq(11))
     )
-    return image.updateMask(mask).select(list(bands)).multiply(0.0001)
+    return image.updateMask(mask).select(list(bands)).multiply(0.0001).toFloat()
 
 
 def sentinel2_composite(config: PipelineConfig, window: DateWindow) -> Any:
@@ -69,7 +69,12 @@ def sentinel2_composite(config: PipelineConfig, window: DateWindow) -> Any:
         )
         .map(lambda image: _mask_sentinel2(image, config.imagery.bands))
     )
-    return collection.median().resample("bilinear").clip(region)
+    # Do not call resample() on the reduced collection. ImageCollection
+    # composites have a coarse default projection, so resampling the composite
+    # before export can turn a small AOI into a smooth interpolation surface.
+    # The export's explicit CRS and scale instead request the native imagery at
+    # the target grid while Earth Engine performs its deferred computation.
+    return collection.median().clip(region)
 
 
 def dynamic_world_tree_mask(config: PipelineConfig, window: DateWindow) -> Any:
