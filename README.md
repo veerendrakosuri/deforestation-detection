@@ -61,11 +61,11 @@ corresponding Dynamic World label masks contain 2,319.68 ha in 338 patches.
 Agreement between those two change masks is IoU 0.7444. These are screening
 results against model-generated labels, not field-verified deforestation claims.
 
-An additional largest-patch review covers 1,193.00 ha (51.3% of all detected
-clearing). Nineteen of the 20 largest patches are supported by both the Dynamic
-World change mask and Hansen Global Forest Change; one has Dynamic World support
-only. See [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md) for the patch
-table, method, thresholds, and limitations.
+All 344 clearing patches were screened against Dynamic World change and Hansen
+Global Forest Change. Both references support 151 patches covering 1,736.63 ha,
+or 74.7% of detected area; limited or mixed support accounts for 3.6% of area.
+See [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md) for the full results,
+largest-patch timing analysis, method, thresholds, and limitations.
 
 ## Setup
 
@@ -133,6 +133,12 @@ python -m deforestation_detection workflow `
 - Treat Dynamic World labels as model-generated labels and inspect them before training.
 - Keep raw data and large model files out of Git.
 
+## Final deliverables
+
+- [`output/pdf/deforestation_detection_final_report.pdf`](output/pdf/deforestation_detection_final_report.pdf) - polished six-page final report.
+- [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md) - full 344-patch validation and largest-patch timing analysis.
+- [Hosted interactive demo](https://rondonia-deforestation-demo.heartyspoon1024.chatgpt.site) - owner-private results dashboard and satellite validation map.
+
 ## Project status
 
 The codebase is complete and passes 14 local unit tests plus the synthetic
@@ -143,6 +149,7 @@ Raw imagery, checkpoints, and generated outputs remain excluded from Git.
 
 See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for evaluation details and
 limitations, and [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md) for the
-largest-patch validation results. The example pilot configuration is
+full patch validation. [`docs/FINAL_REPORT.md`](docs/FINAL_REPORT.md) is the
+complete project report. The example pilot configuration is
 `configs/rondonia_example.yaml`.
 

@@ -58,12 +58,15 @@ the independent Hansen Global Forest Change loss layer:
 $env:PYTHONPATH = "src"
 python scripts/validate_real_run.py `
   --earth-engine-project YOUR_PROJECT_ID `
-  --top-n 20
+  --top-n 344 `
+  --preview-limit 20 `
+  --earth-engine-batch-size 25
 ```
 
 Open `outputs/rondonia/validation/validation_report.html` to review the summary,
-patch table, contact sheet, and individual before/after comparisons. Treat the
-support categories as screening evidence rather than field verification.
+all-patch table, filterable map, contact sheet, and individual before/after
+comparisons for the largest patches. Treat the support categories as screening
+evidence rather than field verification.
 
 ## 6. Quality checks before reporting results
 
