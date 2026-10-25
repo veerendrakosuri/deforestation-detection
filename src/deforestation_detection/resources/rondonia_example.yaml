@@ -1,0 +1,53 @@
+project:
+  name: deforestation-detection
+  random_seed: 42
+
+# Illustrative pilot area in Rondonia, Brazil. Replace this bounding box and
+# review it in Earth Engine before starting a large export.
+region:
+  name: rondonia-pilot
+  bbox_wgs84: [-63.10, -9.80, -62.90, -9.60]
+
+imagery:
+  collection: COPERNICUS/S2_SR_HARMONIZED
+  bands: [B2, B3, B4, B8, B11, B12]
+  cloud_probability_limit: 20
+  pixel_size_m: 10
+  crs: EPSG:32720
+  before:
+    start: "2019-07-01"
+    end: "2019-08-31"
+  after:
+    start: "2024-07-01"
+    end: "2024-08-31"
+
+labels:
+  collection: GOOGLE/DYNAMICWORLD/V1
+  class_name: trees
+  tree_probability_threshold: 0.5
+
+baseline:
+  ndvi_threshold: 0.6
+
+tiling:
+  tile_size: 256
+  stride: 256
+  test_fraction: 0.2
+  validation_fraction: 0.1
+  split_axis: x
+  minimum_valid_fraction: 0.8
+
+change_detection:
+  minimum_patch_pixels: 50
+  connectivity: 8
+
+training:
+  model: smp-unet
+  encoder: resnet34
+  encoder_weights: imagenet
+  batch_size: 8
+  epochs: 30
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  prediction_threshold: 0.5
+  base_channels: 32

@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it and the source datasets."
+title: "Deforestation Detection: a reproducible forest-change screening toolkit"
+type: software
+authors:
+  - family-names: Kosuri
+    given-names: Veerendra
+    alias: veerendrakosuri
+version: 0.2.0
+date-released: 2026-10-25
+repository-code: "https://github.com/veerendrakosuri/deforestation-detection"
+url: "https://github.com/veerendrakosuri/deforestation-detection"
+license: MIT
+keywords:
+  - deforestation
+  - remote sensing
+  - Sentinel-2
+  - forest change
+  - machine learning

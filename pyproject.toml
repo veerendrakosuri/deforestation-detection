@@ -1,15 +1,41 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "deforestation-detection"
-version = "0.1.0"
-description = "Forest segmentation and multi-date deforestation detection from Sentinel-2 imagery."
+name = "forest-change-toolkit"
+version = "0.2.0"
+description = "Reproducible forest-change screening from Sentinel-2 imagery."
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    {name = "Veerendra Kosuri"},
+]
+keywords = [
+    "deforestation",
+    "earth-observation",
+    "geospatial",
+    "machine-learning",
+    "remote-sensing",
+    "sentinel-2",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: GIS",
+]
 dependencies = [
     "numpy>=1.26",
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -26,16 +52,34 @@ ml = [
     "torchvision",
 ]
 dev = [
-    "pytest",
-    "ruff",
+    "build>=1.2",
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "twine>=5.1",
 ]
 
 [project.scripts]
+forest-change = "deforestation_detection.cli:main"
 deforestation-detection = "deforestation_detection.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/veerendrakosuri/deforestation-detection"
+Documentation = "https://github.com/veerendrakosuri/deforestation-detection#readme"
+Issues = "https://github.com/veerendrakosuri/deforestation-detection/issues"
+Repository = "https://github.com/veerendrakosuri/deforestation-detection.git"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+deforestation_detection = ["resources/*.yaml"]
+
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 

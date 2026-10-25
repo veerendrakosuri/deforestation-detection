@@ -6,7 +6,6 @@ import argparse
 import json
 from pathlib import Path
 
-
 GREEN = "#174F2B"
 LIGHT_GREEN = "#EAF5ED"
 AMBER = "#D99100"
@@ -177,7 +176,6 @@ def _build_pdf(
     from reportlab.lib.units import mm
     from reportlab.platypus import (
         Image,
-        KeepTogether,
         PageBreak,
         Paragraph,
         SimpleDocTemplate,

@@ -16,7 +16,6 @@ from deforestation_detection.config import load_config
 from deforestation_detection.raster import assert_aligned, read_raster
 from deforestation_detection.visualize import _true_color
 
-
 HANSEN_DATASET = "UMD/hansen/global_forest_change_2025_v1_13"
 HANSEN_CATALOG_URL = (
     "https://developers.google.com/earth-engine/datasets/catalog/"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,10 @@ class RegionConfig:
         west, south, east, north = self.bbox_wgs84
         if west >= east or south >= north:
             raise ValueError("bbox_wgs84 must be [west, south, east, north]")
+        if not (-180 <= west <= 180 and -180 <= east <= 180):
+            raise ValueError("bbox_wgs84 longitudes must be between -180 and 180")
+        if not (-90 <= south <= 90 and -90 <= north <= 90):
+            raise ValueError("bbox_wgs84 latitudes must be between -90 and 90")
 
 
 @dataclass(frozen=True)
@@ -97,19 +102,28 @@ def _require(mapping: dict[str, Any], key: str) -> Any:
     return mapping[key]
 
 
+def _require_mapping(mapping: dict[str, Any], key: str) -> dict[str, Any]:
+    value = _require(mapping, key)
+    if not isinstance(value, dict):
+        raise ValueError(f"configuration section '{key}' must be a mapping")
+    return value
+
+
 def _date_window(mapping: dict[str, Any]) -> DateWindow:
+    if not isinstance(mapping, dict):
+        raise ValueError("date window must be a mapping with start and end values")
     return DateWindow(start=str(_require(mapping, "start")), end=str(_require(mapping, "end")))
 
 
 def parse_config(raw: dict[str, Any]) -> PipelineConfig:
-    project = _require(raw, "project")
-    region = _require(raw, "region")
-    imagery = _require(raw, "imagery")
-    labels = _require(raw, "labels")
-    baseline = _require(raw, "baseline")
-    tiling = _require(raw, "tiling")
-    change = _require(raw, "change_detection")
-    training = _require(raw, "training")
+    project = _require_mapping(raw, "project")
+    region = _require_mapping(raw, "region")
+    imagery = _require_mapping(raw, "imagery")
+    labels = _require_mapping(raw, "labels")
+    baseline = _require_mapping(raw, "baseline")
+    tiling = _require_mapping(raw, "tiling")
+    change = _require_mapping(raw, "change_detection")
+    training = _require_mapping(raw, "training")
 
     bbox = tuple(float(value) for value in _require(region, "bbox_wgs84"))
     if len(bbox) != 4:
@@ -167,6 +181,10 @@ def parse_config(raw: dict[str, Any]) -> PipelineConfig:
 
     if not config.imagery.bands:
         raise ValueError("at least one imagery band is required")
+    if date.fromisoformat(config.imagery.before.end) > date.fromisoformat(
+        config.imagery.after.start
+    ):
+        raise ValueError("before date window must end on or before the after window")
     if not 0 <= config.imagery.cloud_probability_limit <= 100:
         raise ValueError("cloud_probability_limit must be between 0 and 100")
     if config.imagery.pixel_size_m <= 0:
@@ -179,10 +197,22 @@ def parse_config(raw: dict[str, Any]) -> PipelineConfig:
         raise ValueError("tile_size and stride must be positive")
     if not 0 <= config.tiling.minimum_valid_fraction <= 1:
         raise ValueError("minimum_valid_fraction must be between 0 and 1")
+    if not 0 <= config.tiling.test_fraction < 1:
+        raise ValueError("test_fraction must be between 0 (inclusive) and 1 (exclusive)")
+    if not 0 <= config.tiling.validation_fraction < 1:
+        raise ValueError(
+            "validation_fraction must be between 0 (inclusive) and 1 (exclusive)"
+        )
+    if config.tiling.test_fraction + config.tiling.validation_fraction >= 1:
+        raise ValueError("test_fraction plus validation_fraction must be less than 1")
     if config.tiling.split_axis not in {"x", "y"}:
         raise ValueError("split_axis must be x or y")
+    if config.change_detection.minimum_patch_pixels <= 0:
+        raise ValueError("minimum_patch_pixels must be positive")
     if config.change_detection.connectivity not in {4, 8}:
         raise ValueError("connectivity must be 4 or 8")
+    if config.training.model not in {"smp-unet", "tiny-unet"}:
+        raise ValueError("training model must be 'smp-unet' or 'tiny-unet'")
     if config.training.batch_size <= 0 or config.training.epochs <= 0:
         raise ValueError("batch_size and epochs must be positive")
     if config.training.learning_rate <= 0 or config.training.weight_decay < 0:
@@ -194,16 +224,46 @@ def parse_config(raw: dict[str, Any]) -> PipelineConfig:
     return config
 
 
-def load_config(path: str | Path) -> PipelineConfig:
-    """Read and validate a YAML configuration file."""
+def _bundled_config_text() -> str:
+    return (
+        resources.files("deforestation_detection")
+        .joinpath("resources/rondonia_example.yaml")
+        .read_text(encoding="utf-8")
+    )
+
+
+def load_config(path: str | Path | None = None) -> PipelineConfig:
+    """Read and validate YAML configuration, using the bundled example by default."""
 
     try:
         import yaml
     except ImportError as exc:  # pragma: no cover - exercised in lean installs
         raise RuntimeError("PyYAML is required to read project configuration") from exc
 
-    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    source = _bundled_config_text() if path is None else Path(path).read_text(encoding="utf-8")
+    try:
+        raw = yaml.safe_load(source)
+    except yaml.YAMLError as exc:
+        source_name = "bundled example" if path is None else str(path)
+        raise ValueError(f"invalid YAML in {source_name}: {exc}") from exc
     if not isinstance(raw, dict):
         raise ValueError("configuration root must be a mapping")
     return parse_config(raw)
+
+
+def write_example_config(
+    destination: str | Path,
+    *,
+    overwrite: bool = False,
+) -> Path:
+    """Write the bundled starter configuration to a user-selected path."""
+
+    output = Path(destination)
+    if output.exists() and not overwrite:
+        raise FileExistsError(
+            f"{output} already exists; choose another path or pass --force"
+        )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(_bundled_config_text(), encoding="utf-8")
+    return output
 

@@ -3,19 +3,126 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import platform
+import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
 
+from . import __version__
 from .baseline import compute_ndvi, forest_mask_from_ndvi
 from .change import detect_clearing
 from .metrics import binary_segmentation_metrics
+
+_CAPABILITY_GROUPS = {
+    "core": (
+        ("numpy", "numpy"),
+        ("yaml", "PyYAML"),
+    ),
+    "geospatial": (
+        ("rasterio", "rasterio"),
+        ("scipy", "scipy"),
+        ("folium", "folium"),
+        ("PIL", "Pillow"),
+    ),
+    "machine_learning": (
+        ("torch", "torch"),
+        ("torchvision", "torchvision"),
+        ("segmentation_models_pytorch", "segmentation-models-pytorch"),
+    ),
+    "earth_engine": (
+        ("ee", "earthengine-api"),
+    ),
+}
 
 
 def _write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def run_init(args: argparse.Namespace) -> None:
+    """Create an editable starter configuration."""
+
+    from .config import write_example_config
+
+    destination = write_example_config(args.output, overwrite=args.force)
+    print(f"Created {destination}")
+    print("Next: edit the region, dates, CRS, and thresholds for your study area.")
+
+
+def run_validate_config(args: argparse.Namespace) -> None:
+    """Validate a configuration and print its most important settings."""
+
+    from .config import load_config
+
+    config = load_config(args.config)
+    summary = {
+        "valid": True,
+        "project": config.name,
+        "region": {
+            "name": config.region.name,
+            "bbox_wgs84": list(config.region.bbox_wgs84),
+        },
+        "before": {
+            "start": config.imagery.before.start,
+            "end": config.imagery.before.end,
+        },
+        "after": {
+            "start": config.imagery.after.start,
+            "end": config.imagery.after.end,
+        },
+        "bands": list(config.imagery.bands),
+        "pixel_size_m": config.imagery.pixel_size_m,
+        "model": config.training.model,
+    }
+    print(json.dumps(summary, indent=2))
+
+
+def run_doctor(args: argparse.Namespace) -> int:
+    """Report which optional feature groups are usable in this environment."""
+
+    capabilities: dict[str, dict[str, object]] = {}
+    for group, requirements in _CAPABILITY_GROUPS.items():
+        packages = {
+            package: importlib.util.find_spec(module) is not None
+            for module, package in requirements
+        }
+        capabilities[group] = {
+            "available": all(packages.values()),
+            "packages": packages,
+        }
+
+    report = {
+        "version": __version__,
+        "python": platform.python_version(),
+        "capabilities": capabilities,
+    }
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        print(f"forest-change {__version__}")
+        print(f"Python {platform.python_version()}")
+        for group, details in capabilities.items():
+            status = "ready" if details["available"] else "missing dependencies"
+            print(f"- {group.replace('_', ' ')}: {status}")
+            missing = [
+                name
+                for name, installed in details["packages"].items()
+                if not installed
+            ]
+            if missing:
+                print(f"  missing: {', '.join(missing)}")
+        print('Install every feature with: pip install "forest-change-toolkit[geo,ml]"')
+
+    if args.strict and not all(
+        bool(details["available"]) for details in capabilities.values()
+    ):
+        return 1
+    return 0
 
 
 def run_baseline(args: argparse.Namespace) -> None:
@@ -306,10 +413,39 @@ def run_workflow(args: argparse.Namespace) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="deforestation-detection",
-        description="Train and run a Sentinel-2 deforestation-detection pipeline.",
+        prog="forest-change",
+        description=(
+            "Screen multi-date Sentinel-2 imagery for potential forest change. "
+            "Outputs require expert review and are not legal proof of deforestation."
+        ),
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    init = subparsers.add_parser("init", help="Write an editable starter configuration")
+    init.add_argument("--output", default="deforestation.yaml")
+    init.add_argument("--force", action="store_true", help="Replace an existing file")
+    init.set_defaults(handler=run_init)
+
+    validate = subparsers.add_parser(
+        "validate-config", help="Validate and summarize a YAML configuration"
+    )
+    validate.add_argument(
+        "--config",
+        help="Configuration path; omit to validate the bundled example",
+    )
+    validate.set_defaults(handler=run_validate_config)
+
+    doctor = subparsers.add_parser(
+        "doctor", help="Check optional geospatial and machine-learning dependencies"
+    )
+    doctor.add_argument("--json", action="store_true", help="Print machine-readable JSON")
+    doctor.add_argument(
+        "--strict",
+        action="store_true",
+        help="Return a failure status unless every feature group is available",
+    )
+    doctor.set_defaults(handler=run_doctor)
 
     baseline = subparsers.add_parser("baseline", help="Create an NDVI forest mask")
     baseline.add_argument("--red", required=True, help="Path to a red-band .npy array")
@@ -335,7 +471,7 @@ def build_parser() -> argparse.ArgumentParser:
     export = subparsers.add_parser(
         "export-earth-engine", help="Export imagery and labels to Google Drive"
     )
-    export.add_argument("--config", default="configs/rondonia_example.yaml")
+    export.add_argument("--config", help="Configuration path; defaults to bundled example")
     export.add_argument("--drive-folder", default="deforestation-detection")
     export.add_argument("--earth-engine-project")
     export.add_argument("--authenticate", action="store_true")
@@ -344,13 +480,13 @@ def build_parser() -> argparse.ArgumentParser:
     prepare = subparsers.add_parser("prepare", help="Create geographically split NPZ tiles")
     prepare.add_argument("--imagery", required=True)
     prepare.add_argument("--labels", required=True)
-    prepare.add_argument("--config", default="configs/rondonia_example.yaml")
+    prepare.add_argument("--config", help="Configuration path; defaults to bundled example")
     prepare.add_argument("--output", default="data/processed")
     prepare.set_defaults(handler=run_prepare)
 
     train = subparsers.add_parser("train", help="Train and evaluate the U-Net")
     train.add_argument("--dataset", default="data/processed")
-    train.add_argument("--config", default="configs/rondonia_example.yaml")
+    train.add_argument("--config", help="Configuration path; defaults to bundled example")
     train.add_argument("--output", default="models/run")
     train.add_argument("--model", choices=("smp-unet", "tiny-unet"))
     train.add_argument("--encoder")
@@ -374,7 +510,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     baseline_tif.add_argument("--imagery", required=True)
     baseline_tif.add_argument("--labels", required=True)
-    baseline_tif.add_argument("--config", default="configs/rondonia_example.yaml")
+    baseline_tif.add_argument(
+        "--config", help="Configuration path; defaults to bundled example"
+    )
     baseline_tif.add_argument("--output", default="outputs/baseline")
     baseline_tif.set_defaults(handler=run_baseline_geotiff)
 
@@ -383,7 +521,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     change_tif.add_argument("--before", required=True)
     change_tif.add_argument("--after", required=True)
-    change_tif.add_argument("--config", default="configs/rondonia_example.yaml")
+    change_tif.add_argument(
+        "--config", help="Configuration path; defaults to bundled example"
+    )
     change_tif.add_argument("--output", default="outputs/change")
     change_tif.set_defaults(handler=run_change_geotiff)
 
@@ -392,7 +532,9 @@ def build_parser() -> argparse.ArgumentParser:
     map_command.add_argument("--after", required=True)
     map_command.add_argument("--clearing", required=True)
     map_command.add_argument("--cleared-hectares", type=float, required=True)
-    map_command.add_argument("--config", default="configs/rondonia_example.yaml")
+    map_command.add_argument(
+        "--config", help="Configuration path; defaults to bundled example"
+    )
     map_command.add_argument("--output", default="outputs/deforestation_map.html")
     map_command.set_defaults(handler=run_map)
 
@@ -401,7 +543,7 @@ def build_parser() -> argparse.ArgumentParser:
     workflow.add_argument("--before-labels", required=True)
     workflow.add_argument("--after-imagery", required=True)
     workflow.add_argument("--after-labels", required=True)
-    workflow.add_argument("--config", default="configs/rondonia_example.yaml")
+    workflow.add_argument("--config", help="Configuration path; defaults to bundled example")
     workflow.add_argument("--output", default="outputs/workflow")
     workflow.add_argument("--device", default="auto")
     workflow.set_defaults(handler=run_workflow)
@@ -409,11 +551,21 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
-    args = build_parser().parse_args()
-    args.handler(args)
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the CLI and convert expected failures into concise error messages."""
+
+    args = build_parser().parse_args(argv)
+    try:
+        result = args.handler(args)
+    except (ImportError, OSError, RuntimeError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        print("cancelled", file=sys.stderr)
+        return 130
+    return int(result or 0)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
 

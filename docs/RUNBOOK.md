@@ -2,18 +2,25 @@
 
 ## 1. Install
 
-Use Python 3.12 and create a project environment:
+Use Python 3.10 or newer and create a project environment:
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+pip install -e ".[geo,ml]"
+forest-change doctor
 ```
 
 ## 2. Review the pilot configuration
 
-Open `configs/rondonia_example.yaml` and inspect the bounding box in Earth Engine.
+Create `project.yaml`, then inspect its bounding box in Earth Engine:
+
+```powershell
+forest-change init --output project.yaml
+forest-change validate-config --config project.yaml
+```
+
 Keep both date windows in the same season. Reduce the area for the first run if
 the export would be too large.
 
@@ -22,9 +29,8 @@ the export would be too large.
 Create or select a Google Cloud project with Earth Engine enabled, then run:
 
 ```powershell
-$env:PYTHONPATH = "src"
-python -m deforestation_detection export-earth-engine `
-  --config configs/rondonia_example.yaml `
+forest-change export-earth-engine `
+  --config project.yaml `
   --earth-engine-project YOUR_PROJECT_ID `
   --drive-folder deforestation-detection `
   --authenticate
@@ -37,12 +43,12 @@ for them to complete, download the GeoTIFFs from Google Drive, and place them in
 ## 4. Run everything locally
 
 ```powershell
-python -m deforestation_detection workflow `
+forest-change workflow `
   --before-imagery data/raw/rondonia-pilot_before_sentinel2.tif `
   --before-labels data/raw/rondonia-pilot_before_forest_label.tif `
   --after-imagery data/raw/rondonia-pilot_after_sentinel2.tif `
   --after-labels data/raw/rondonia-pilot_after_forest_label.tif `
-  --config configs/rondonia_example.yaml `
+  --config project.yaml `
   --output outputs/rondonia
 ```
 
@@ -55,7 +61,6 @@ Compare the largest connected predictions with Dynamic World label change and
 the independent Hansen Global Forest Change loss layer:
 
 ```powershell
-$env:PYTHONPATH = "src"
 python scripts/validate_real_run.py `
   --earth-engine-project YOUR_PROJECT_ID `
   --top-n 344 `

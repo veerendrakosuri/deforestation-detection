@@ -1,11 +1,2 @@
-earthengine-api
-folium
-Pillow
-numpy
-scipy
-rasterio
-torch
-torchvision
-segmentation-models-pytorch
-PyYAML
+-e .[geo,ml]
 

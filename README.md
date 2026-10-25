@@ -1,155 +1,202 @@
-# Deforestation Detection from Satellite Images
+# Forest Change Toolkit
 
-An end-to-end machine-learning project that maps forest cover from Sentinel-2 imagery, compares two dates, and highlights newly cleared areas on an interactive map.
+[![CI](https://github.com/veerendrakosuri/deforestation-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/veerendrakosuri/deforestation-detection/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## Project goal
+An open-source Python library and command-line tool for reproducible forest-change
+screening with Sentinel-2 imagery. It builds cloud-masked composites, evaluates an
+NDVI baseline, trains a U-Net, compares forest masks from two periods, calculates
+potential clearing area, and produces reviewable GeoTIFF and interactive-map outputs.
 
-Build and evaluate a U-Net forest-segmentation model, compare it with an NDVI threshold baseline, and estimate the area of newly cleared forest.
+The PyPI distribution name is `forest-change-toolkit`; the import package remains
+`deforestation_detection`, and the preferred terminal command is `forest-change`.
 
-## Stack
+> [!IMPORTANT]
+> This is a screening and research tool. Its predictions identify places that may
+> require expert or field review; they are not legal proof of deforestation or of
+> illegal activity.
 
-- Python
-- Google Earth Engine
-- Sentinel-2 Level-2A imagery and Dynamic World forest labels
-- NumPy and rasterio
-- PyTorch and segmentation-models-pytorch
-- folium for interactive maps
+## Why use it?
 
-## Repository layout
+- Run the complete workflow from a terminal or import individual Python functions.
+- Start with a deterministic offline demo—no account, imagery, or GPU required.
+- Keep study areas and modeling choices in validated YAML configuration.
+- Compare a transparent NDVI baseline with a trained segmentation model.
+- Preserve georeferencing through prediction, change detection, and map creation.
+- Use geographically separated train, validation, and test blocks.
 
-```text
-data/                 Local imagery and derived datasets (not tracked by Git)
-  raw/                Earth Engine exports and source labels
-  processed/          Normalized tiles and train/validation/test manifests
-models/               Trained checkpoints (not tracked by Git)
-notebooks/            Exploration and experiments
-outputs/              Metrics, figures, and generated maps
-src/
-  deforestation_detection/ Core pipeline, model, training, and CLI
-configs/              Real-data and smoke-test configurations
-docs/                 Methodology and real-data runbook
-scripts/              Complete synthetic integration test
-tests/                Automated tests
+## Quick start
+
+Clone the repository and install the lightweight core:
+
+```powershell
+git clone https://github.com/veerendrakosuri/deforestation-detection.git
+cd deforestation-detection
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -e .
 ```
 
-## Implemented workflow
+Check the installation and run the offline demo:
 
-1. Build cloud- and shadow-masked, same-season Sentinel-2 median composites in Earth Engine.
-2. Export six imagery bands and Dynamic World tree labels as aligned cloud-optimized GeoTIFFs.
-3. Evaluate a thresholded NDVI baseline.
-4. Tile rasters and create contiguous geographic train, validation, and test blocks.
-5. Calculate normalization statistics from training pixels only.
-6. Train a six-channel U-Net using Dice plus BCE-with-logits loss.
-7. Select the checkpoint by validation IoU and report held-out test metrics.
-8. Run sliding-window prediction on both dates.
-9. Remove clearing patches smaller than 50 pixels and calculate cleared hectares.
-10. Save an interactive before/after map with clearing highlighted in red.
+```powershell
+forest-change --version
+forest-change doctor
+forest-change demo --output outputs/demo
+```
 
-## Evaluation
+The demo writes NumPy masks and `demo_metrics.json`. It uses synthetic data and must
+not be presented as a real-world deforestation result.
 
-Report forest-class IoU and F1 on held-out geographic areas for both the NDVI baseline and U-Net. Also report the hectares of clearing found by multi-date change detection.
+## Install feature groups
+
+The core installation supports NumPy baselines, mask comparison, configuration, and
+the offline demo. Install only what you need:
+
+```powershell
+# Raster processing, maps, and Earth Engine exports
+pip install -e ".[geo]"
+
+# Model training and inference
+pip install -e ".[ml]"
+
+# Complete local development installation
+pip install -e ".[geo,ml,dev]"
+```
+
+Large dependencies such as PyTorch and rasterio are deliberately optional. Run
+`forest-change doctor` at any time to see which capabilities are ready.
+
+## Configure a study area
+
+Create and validate an editable configuration:
+
+```powershell
+forest-change init --output project.yaml
+forest-change validate-config --config project.yaml
+```
+
+Before running an export, replace the example bounding box, dates, CRS, and thresholds.
+Use comparable seasonal windows and inspect the area in Earth Engine.
+
+## Real-data workflow
+
+Earth Engine requires a Google account, an enabled Cloud project, and Earth Engine
+access. Authentication is never stored in this repository.
+
+```powershell
+forest-change export-earth-engine `
+  --config project.yaml `
+  --earth-engine-project YOUR_PROJECT_ID `
+  --drive-folder deforestation-detection `
+  --authenticate
+```
+
+After downloading the four aligned GeoTIFF exports from Google Drive:
+
+```powershell
+forest-change workflow `
+  --before-imagery data/raw/before_sentinel2.tif `
+  --before-labels data/raw/before_forest_label.tif `
+  --after-imagery data/raw/after_sentinel2.tif `
+  --after-labels data/raw/after_forest_label.tif `
+  --config project.yaml `
+  --output outputs/my-area
+```
+
+The workflow creates baseline metrics, geographically split tiles, a trained
+checkpoint, held-out metrics, before/after forest masks, a clearing mask, area
+statistics, and an interactive HTML review map.
+
+## CLI commands
+
+| Command | Purpose |
+|---|---|
+| `init` | Write an editable configuration |
+| `validate-config` | Validate and summarize configuration |
+| `doctor` | Check installed feature groups |
+| `demo` | Run an offline synthetic example |
+| `baseline` | Create an NDVI mask from NumPy arrays |
+| `change` | Compare two NumPy forest masks |
+| `export-earth-engine` | Start aligned imagery and label exports |
+| `prepare` | Build geographically separated training tiles |
+| `train` | Train and evaluate a U-Net |
+| `predict` | Produce a georeferenced forest mask |
+| `baseline-geotiff` | Evaluate the NDVI baseline on GeoTIFFs |
+| `change-geotiff` | Detect change between georeferenced masks |
+| `map` | Produce an interactive change-review map |
+| `workflow` | Run the complete local pipeline |
+
+Both `forest-change` and the backwards-compatible `deforestation-detection` command
+invoke the same CLI. See [the CLI reference](docs/CLI_REFERENCE.md) for examples.
+
+## Python API
+
+The lightweight numerical functions can be used independently:
+
+```python
+import numpy as np
+from deforestation_detection import detect_clearing, forest_mask_from_ndvi
+
+red = np.load("red.npy")
+nir = np.load("nir.npy")
+before = forest_mask_from_ndvi(red, nir, threshold=0.6)
+
+after = np.load("forest_after.npy")
+cleared, statistics = detect_clearing(
+    before,
+    after,
+    minimum_patch_pixels=50,
+    pixel_size_m=10,
+)
+print(statistics.cleared_hectares)
+```
+
+## Pilot results
+
+The included report documents a Rondônia, Brazil pilot with geographically held-out
+evaluation data:
 
 | Model | Forest IoU | Forest F1 |
 |---|---:|---:|
 | NDVI baseline | 0.9109 | 0.9534 |
 | U-Net | 0.9529 | 0.9759 |
 
-These values are from the geographically held-out eight-tile test strip in the
-Rondonia pilot. The selected U-Net checkpoint was epoch 30, with validation IoU
-0.9446. The multi-date prediction flagged 2,326.06 ha in 344 patches; the
-corresponding Dynamic World label masks contain 2,319.68 ha in 338 patches.
-Agreement between those two change masks is IoU 0.7444. These are screening
-results against model-generated labels, not field-verified deforestation claims.
+The run flagged 2,326.06 hectares across 344 patches. Independent screening found
+that 74.7% of the detected area was supported by both Dynamic World change and Hansen
+Global Forest Change. These results are specific to this pilot and do not demonstrate
+accuracy in other regions or seasons. Read [the validation report](docs/VALIDATION_REPORT.md)
+for methodology, thresholds, and limitations.
 
-All 344 clearing patches were screened against Dynamic World change and Hansen
-Global Forest Change. Both references support 151 patches covering 1,736.63 ha,
-or 74.7% of detected area; limited or mixed support accounts for 3.6% of area.
-See [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md) for the full results,
-largest-patch timing analysis, method, thresholds, and limitations.
+## Data and model limitations
 
-## Setup
+- Dynamic World labels are model-generated land-cover estimates, not field labels.
+- Optical imagery can be affected by cloud, haze, shadow, fire, flooding, and seasonality.
+- Forest definitions and required minimum mapping units differ between organizations.
+- A model trained in one geography may not generalize to another biome.
+- Human review and, where important, field verification remain necessary.
 
-Create and activate a virtual environment, then install the dependencies:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-Earth Engine requires a Google account with Earth Engine access. Authenticate only when you are ready to download imagery.
-
-## Verify the complete pipeline
-
-The smoke test generates aligned synthetic GeoTIFFs, trains the compact U-Net,
-runs inference on two dates, detects clearing, and writes an interactive map:
+## Development
 
 ```powershell
-$env:PYTHONPATH = "src"
-python scripts/run_smoke_test.py
+pip install -e ".[dev]"
+python -m pytest
+ruff check .
+python -m build
+python -m twine check dist/*
 ```
 
-Its outputs are written to `outputs/smoke_test/`. These results verify the
-software only; they are deliberately synthetic and must not be presented as
-real deforestation findings.
+Generated imagery, credentials, trained checkpoints, and outputs are excluded from
+Git. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and the
+[methodology](docs/METHODOLOGY.md) before contributing. Maintainers can follow the
+[release guide](docs/RELEASING.md) for GitHub and PyPI releases.
 
-Latest verified synthetic run:
+## Citation and license
 
-| Check | Result |
-|---|---:|
-| Held-out U-Net IoU | 0.9611 |
-| Held-out U-Net F1 | 0.9801 |
-| Known clearing | 27.52 ha |
-| Detected clearing | 26.31 ha |
+If this software supports published work, cite the metadata in [CITATION.cff](CITATION.cff)
+and cite the original satellite and reference datasets used in the analysis.
 
-Run the automated tests:
-
-```powershell
-$env:PYTHONPATH = "src"
-python -m unittest discover -s tests -v
-```
-
-## Run with real data
-
-Follow [`docs/RUNBOOK.md`](docs/RUNBOOK.md). After the Earth Engine exports are
-downloaded, the complete local pipeline is one command:
-
-```powershell
-python -m deforestation_detection workflow `
-  --before-imagery data/raw/rondonia-pilot_before_sentinel2.tif `
-  --before-labels data/raw/rondonia-pilot_before_forest_label.tif `
-  --after-imagery data/raw/rondonia-pilot_after_sentinel2.tif `
-  --after-labels data/raw/rondonia-pilot_after_forest_label.tif `
-  --config configs/rondonia_example.yaml `
-  --output outputs/rondonia
-```
-
-## Important evaluation rules
-
-- Use dates from the same season.
-- Mask clouds and cloud shadows.
-- Split by geographic area, never by random neighboring tiles.
-- Treat Dynamic World labels as model-generated labels and inspect them before training.
-- Keep raw data and large model files out of Git.
-
-## Final deliverables
-
-- [`output/pdf/deforestation_detection_final_report.pdf`](output/pdf/deforestation_detection_final_report.pdf) - polished six-page final report.
-- [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md) - full 344-patch validation and largest-patch timing analysis.
-- [Hosted interactive demo](https://rondonia-deforestation-demo.heartyspoon1024.chatgpt.site) - owner-private results dashboard and satellite validation map.
-
-## Project status
-
-The codebase is complete and passes 14 local unit tests plus the synthetic
-end-to-end smoke test. The real Rondonia pilot was exported from Earth Engine,
-reviewed across 50 image/label tiles, trained for 30 epochs on CPU, evaluated on
-a geographically held-out strip, and run through prediction and change mapping.
-Raw imagery, checkpoints, and generated outputs remain excluded from Git.
-
-See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for evaluation details and
-limitations, and [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md) for the
-full patch validation. [`docs/FINAL_REPORT.md`](docs/FINAL_REPORT.md) is the
-complete project report. The example pilot configuration is
-`configs/rondonia_example.yaml`.
-
+The software is released under the [MIT License](LICENSE). Dataset providers retain
+their own licenses, terms, and attribution requirements.

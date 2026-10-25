@@ -39,7 +39,6 @@ def create_change_map(
 
     try:
         import folium
-        import rasterio
         from rasterio.transform import array_bounds
         from rasterio.warp import transform_bounds
     except ImportError as exc:  # pragma: no cover - optional dependency path
