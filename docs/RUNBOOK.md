@@ -49,7 +49,23 @@ python -m deforestation_detection workflow `
 The workflow writes the NDVI results, prepared tiles, best checkpoint, test
 metrics, two forest predictions, the clearing mask, and an interactive HTML map.
 
-## 5. Quality checks before reporting results
+## 5. Validate the largest clearing patches
+
+Compare the largest connected predictions with Dynamic World label change and
+the independent Hansen Global Forest Change loss layer:
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts/validate_real_run.py `
+  --earth-engine-project YOUR_PROJECT_ID `
+  --top-n 20
+```
+
+Open `outputs/rondonia/validation/validation_report.html` to review the summary,
+patch table, contact sheet, and individual before/after comparisons. Treat the
+support categories as screening evidence rather than field verification.
+
+## 6. Quality checks before reporting results
 
 - Visually compare at least 50 label tiles against the Sentinel-2 composite.
 - Confirm train, validation, and test blocks are geographically separate.

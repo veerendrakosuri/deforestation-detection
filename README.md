@@ -61,6 +61,12 @@ corresponding Dynamic World label masks contain 2,319.68 ha in 338 patches.
 Agreement between those two change masks is IoU 0.7444. These are screening
 results against model-generated labels, not field-verified deforestation claims.
 
+An additional largest-patch review covers 1,193.00 ha (51.3% of all detected
+clearing). Nineteen of the 20 largest patches are supported by both the Dynamic
+World change mask and Hansen Global Forest Change; one has Dynamic World support
+only. See [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md) for the patch
+table, method, thresholds, and limitations.
+
 ## Setup
 
 Create and activate a virtual environment, then install the dependencies:
@@ -136,5 +142,7 @@ a geographically held-out strip, and run through prediction and change mapping.
 Raw imagery, checkpoints, and generated outputs remain excluded from Git.
 
 See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for evaluation details and
-limitations. The example pilot configuration is `configs/rondonia_example.yaml`.
+limitations, and [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md) for the
+largest-patch validation results. The example pilot configuration is
+`configs/rondonia_example.yaml`.
 
