@@ -1,0 +1,18 @@
+{
+  "type": "Feature",
+  "properties": {
+    "name": "rondonia-pilot-example"
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [-63.10, -9.80],
+        [-62.90, -9.80],
+        [-62.90, -9.60],
+        [-63.10, -9.60],
+        [-63.10, -9.80]
+      ]
+    ]
+  }
+}

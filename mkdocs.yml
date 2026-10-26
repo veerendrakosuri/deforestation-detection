@@ -1,0 +1,17 @@
+site_name: Forest Change Toolkit
+site_description: Reproducible forest-change screening from Sentinel-2 imagery
+site_url: https://veerendrakosuri.github.io/deforestation-detection/
+repo_url: https://github.com/veerendrakosuri/deforestation-detection
+repo_name: veerendrakosuri/deforestation-detection
+theme:
+  name: readthedocs
+nav:
+  - Home: index.md
+  - Real-data runbook: RUNBOOK.md
+  - CLI reference: CLI_REFERENCE.md
+  - Operations: OPERATIONS.md
+  - Methodology: METHODOLOGY.md
+  - Validation report: VALIDATION_REPORT.md
+  - Pilot report: FINAL_REPORT.md
+  - Releasing: RELEASING.md
+strict: true

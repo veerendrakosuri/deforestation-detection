@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a reproducible problem in the package or CLI
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach credentials, private imagery, or sensitive locations.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the actual and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Include the command and a minimal, non-sensitive example when possible.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Toolkit version
+      placeholder: Output of forest-change --version
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Python and operating system
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      render: shell

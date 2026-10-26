@@ -32,6 +32,8 @@ Confirm that the version agrees in `pyproject.toml`,
 
 Create an annotated `vX.Y.Z` tag only after CI passes. The GitHub release should include
 the matching wheel and source archive from `dist/`, plus the relevant changelog section.
+Pushing the tag also builds a versioned CPU image in GitHub Container Registry.
+Verify both the container workflow and release assets before announcing the release.
 
 ## PyPI trusted publishing
 

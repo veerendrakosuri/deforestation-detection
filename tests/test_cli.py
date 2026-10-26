@@ -68,6 +68,58 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result, 2)
         self.assertIn("error:", stderr.getvalue())
 
+    def test_geojson_config_and_report_commands(self) -> None:
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.assertEqual(
+                main(["validate-config", "--config", "configs/geojson_example.yaml"]),
+                0,
+            )
+        validation = json.loads(stdout.getvalue())
+        self.assertEqual(validation["region"]["type"], "geojson")
+        self.assertEqual(validation["region"]["geojson_type"], "Feature")
+
+        with self.temporary_directory() as directory:
+            root = Path(directory)
+            results = root / "workflow_results.json"
+            report = root / "report.md"
+            results.write_text(
+                json.dumps(
+                    {
+                        "provenance": {
+                            "version": "0.3.0",
+                            "generated_at_utc": "2026-10-26T00:00:00+00:00",
+                            "config": {
+                                "name": "test",
+                                "region": {"name": "pilot"},
+                            },
+                            "inputs_hashed": False,
+                        },
+                        "training": {"test_iou": 0.9, "test_f1": 0.95},
+                        "dataset": {"train_tiles": 10, "validation_tiles": 2, "test_tiles": 2},
+                        "change": {"cleared_hectares": 12.5, "patch_count": 3},
+                        "map": "map.html",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    main(
+                        [
+                            "report",
+                            "--results",
+                            str(results),
+                            "--output",
+                            str(report),
+                        ]
+                    ),
+                    0,
+                )
+            text = report.read_text(encoding="utf-8")
+            self.assertIn("12.50 ha", text)
+            self.assertIn("legal proof of deforestation", text)
+
 
 if __name__ == "__main__":
     unittest.main()

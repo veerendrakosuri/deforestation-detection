@@ -35,6 +35,26 @@ forest-change validate-config --config project.yaml
 
 Omit `--config` to inspect the configuration bundled with the installed package.
 
+A region must define exactly one area source. Use either a bounding box:
+
+```yaml
+region:
+  name: rondonia-pilot
+  bbox_wgs84: [-64.10, -10.35, -63.75, -10.05]
+```
+
+or an exact boundary in a GeoJSON file:
+
+```yaml
+region:
+  name: rondonia-aoi
+  geojson_path: ../examples/rondonia_aoi.geojson
+```
+
+The path is resolved relative to the YAML file. Inline `geojson` objects are also
+accepted. Supported objects are Polygon, MultiPolygon, Feature, and polygon-only
+FeatureCollection.
+
 ### `doctor`
 
 Show which optional capabilities are installed:
@@ -47,6 +67,16 @@ forest-change doctor --strict
 
 `--strict` returns an error status unless core, geospatial, machine-learning, and
 Earth Engine packages are all available.
+
+### `report`
+
+Build or rebuild a human-readable report from an existing workflow result:
+
+```powershell
+forest-change report `
+  --results outputs/my-area/workflow_results.json `
+  --output outputs/my-area/screening_report.md
+```
 
 ## Lightweight array commands
 
@@ -156,8 +186,12 @@ forest-change workflow `
   --after-labels data/raw/after_forest_label.tif `
   --config project.yaml `
   --output outputs/my-area `
-  --device auto
+  --device auto `
+  --hash-inputs
 ```
 
-For scheduled use, archive `workflow_results.json` with the configuration and model
-checkpoint so that every result can be traced to its inputs and settings.
+The workflow automatically creates `screening_report.md`. Its
+`workflow_results.json` records the toolkit version, platform, full parsed
+configuration, input paths, and sizes. `--hash-inputs` additionally records SHA-256
+digests for stronger integrity checking; omit it when hashing very large rasters
+would be too expensive.

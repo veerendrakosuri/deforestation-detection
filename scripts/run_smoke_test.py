@@ -11,6 +11,8 @@ from deforestation_detection.config import load_config
 from deforestation_detection.geospatial import run_change_detection, run_ndvi_baseline
 from deforestation_detection.inference import predict_geotiff
 from deforestation_detection.prepare import prepare_dataset
+from deforestation_detection.provenance import workflow_provenance
+from deforestation_detection.report import build_workflow_report
 from deforestation_detection.train import train_model
 from deforestation_detection.visualize import create_change_map
 
@@ -160,6 +162,12 @@ def main() -> None:
         cleared_hectares=float(change["cleared_hectares"]),
     )
     result = {
+        "provenance": workflow_provenance(
+            config,
+            config_path="configs/smoke_test.yaml",
+            inputs=inputs,
+            hash_inputs=True,
+        ),
         "baseline_before": baseline_before,
         "baseline_after": baseline_after,
         "expected_change": expected_change,
@@ -170,6 +178,9 @@ def main() -> None:
         "change": change,
         "map": str(map_path),
     }
+    report_path = root / "screening_report.md"
+    result["report"] = str(report_path)
+    report_path.write_text(build_workflow_report(result), encoding="utf-8")
     (root / "smoke_test_results.json").write_text(
         json.dumps(result, indent=2) + "\n", encoding="utf-8"
     )

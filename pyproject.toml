@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "forest-change-toolkit"
-version = "0.2.0"
+version = "0.3.0"
 description = "Reproducible forest-change screening from Sentinel-2 imagery."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -57,6 +57,9 @@ dev = [
     "ruff>=0.6",
     "twine>=5.1",
 ]
+docs = [
+    "mkdocs>=1.6",
+]
 
 [project.scripts]
 forest-change = "deforestation_detection.cli:main"
@@ -64,7 +67,7 @@ deforestation-detection = "deforestation_detection.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/veerendrakosuri/deforestation-detection"
-Documentation = "https://github.com/veerendrakosuri/deforestation-detection#readme"
+Documentation = "https://veerendrakosuri.github.io/deforestation-detection/"
 Issues = "https://github.com/veerendrakosuri/deforestation-detection/issues"
 Repository = "https://github.com/veerendrakosuri/deforestation-detection.git"
 

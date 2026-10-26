@@ -25,6 +25,9 @@ ruff check .
 
 Smaller documentation or core-array changes may use `pip install -e ".[dev]"`.
 Optional dependency tests skip automatically when their feature group is absent.
+The hosted integration job installs every feature group and runs the end-to-end
+synthetic GeoTIFF smoke test. Pull requests should keep both core and integration
+checks green.
 
 ## Pull requests
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import date
 from importlib import resources
@@ -24,9 +25,15 @@ class DateWindow:
 @dataclass(frozen=True)
 class RegionConfig:
     name: str
-    bbox_wgs84: tuple[float, float, float, float]
+    bbox_wgs84: tuple[float, float, float, float] | None = None
+    geojson: dict[str, Any] | None = None
+    geojson_path: str | None = None
 
     def __post_init__(self) -> None:
+        if (self.bbox_wgs84 is None) == (self.geojson is None):
+            raise ValueError("region must define exactly one of bbox_wgs84 or GeoJSON")
+        if self.bbox_wgs84 is None:
+            return
         west, south, east, north = self.bbox_wgs84
         if west >= east or south >= north:
             raise ValueError("bbox_wgs84 must be [west, south, east, north]")
@@ -115,7 +122,97 @@ def _date_window(mapping: dict[str, Any]) -> DateWindow:
     return DateWindow(start=str(_require(mapping, "start")), end=str(_require(mapping, "end")))
 
 
-def parse_config(raw: dict[str, Any]) -> PipelineConfig:
+def _validate_geojson(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError("GeoJSON must be a JSON object")
+    object_type = value.get("type")
+    if object_type in {"Polygon", "MultiPolygon"}:
+        if not value.get("coordinates"):
+            raise ValueError("GeoJSON geometry must contain coordinates")
+        return value
+    if object_type == "Feature":
+        geometry = value.get("geometry")
+        if not isinstance(geometry, dict) or geometry.get("type") not in {
+            "Polygon",
+            "MultiPolygon",
+        }:
+            raise ValueError("GeoJSON Feature must contain a Polygon or MultiPolygon")
+        return value
+    if object_type == "FeatureCollection":
+        features = value.get("features")
+        if not isinstance(features, list) or not features:
+            raise ValueError("GeoJSON FeatureCollection must contain at least one feature")
+        for feature in features:
+            geometry = feature.get("geometry") if isinstance(feature, dict) else None
+            if not isinstance(geometry, dict) or geometry.get("type") not in {
+                "Polygon",
+                "MultiPolygon",
+            }:
+                raise ValueError(
+                    "every GeoJSON feature must contain a Polygon or MultiPolygon"
+                )
+        return value
+    raise ValueError(
+        "GeoJSON must be a Polygon, MultiPolygon, Feature, or FeatureCollection"
+    )
+
+
+def _region_config(
+    region: dict[str, Any],
+    *,
+    base_dir: Path | None,
+) -> RegionConfig:
+    choices = (
+        region.get("bbox_wgs84") is not None,
+        region.get("geojson") is not None,
+        region.get("geojson_path") is not None,
+    )
+    if sum(choices) != 1:
+        raise ValueError(
+            "region must define exactly one of bbox_wgs84, geojson, or geojson_path"
+        )
+
+    name = str(_require(region, "name"))
+    if region.get("bbox_wgs84") is not None:
+        bbox_value = region["bbox_wgs84"]
+        if not isinstance(bbox_value, (list, tuple)):
+            raise ValueError("bbox_wgs84 must be a list of four coordinates")
+        try:
+            bbox = tuple(float(value) for value in bbox_value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("bbox_wgs84 coordinates must be numbers") from exc
+        if len(bbox) != 4:
+            raise ValueError("bbox_wgs84 must contain exactly four coordinates")
+        return RegionConfig(name=name, bbox_wgs84=bbox)
+
+    if region.get("geojson") is not None:
+        return RegionConfig(name=name, geojson=_validate_geojson(region["geojson"]))
+
+    path_value = str(region["geojson_path"]).strip()
+    if not path_value:
+        raise ValueError("geojson_path must not be empty")
+    configured_path = Path(path_value)
+    resolved_path = (
+        configured_path
+        if configured_path.is_absolute() or base_dir is None
+        else base_dir / configured_path
+    )
+    try:
+        geojson = json.loads(resolved_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid GeoJSON in {resolved_path}: {exc}") from exc
+    return RegionConfig(
+        name=name,
+        geojson=_validate_geojson(geojson),
+        geojson_path=str(resolved_path.resolve()),
+    )
+
+
+def parse_config(
+    raw: dict[str, Any],
+    *,
+    base_dir: str | Path | None = None,
+) -> PipelineConfig:
     project = _require_mapping(raw, "project")
     region = _require_mapping(raw, "region")
     imagery = _require_mapping(raw, "imagery")
@@ -125,14 +222,13 @@ def parse_config(raw: dict[str, Any]) -> PipelineConfig:
     change = _require_mapping(raw, "change_detection")
     training = _require_mapping(raw, "training")
 
-    bbox = tuple(float(value) for value in _require(region, "bbox_wgs84"))
-    if len(bbox) != 4:
-        raise ValueError("bbox_wgs84 must contain exactly four coordinates")
-
     config = PipelineConfig(
         name=str(_require(project, "name")),
         random_seed=int(project.get("random_seed", 42)),
-        region=RegionConfig(name=str(_require(region, "name")), bbox_wgs84=bbox),
+        region=_region_config(
+            region,
+            base_dir=None if base_dir is None else Path(base_dir),
+        ),
         imagery=ImageryConfig(
             collection=str(_require(imagery, "collection")),
             bands=tuple(str(band) for band in _require(imagery, "bands")),
@@ -240,7 +336,12 @@ def load_config(path: str | Path | None = None) -> PipelineConfig:
     except ImportError as exc:  # pragma: no cover - exercised in lean installs
         raise RuntimeError("PyYAML is required to read project configuration") from exc
 
-    source = _bundled_config_text() if path is None else Path(path).read_text(encoding="utf-8")
+    config_path = None if path is None else Path(path).resolve()
+    source = (
+        _bundled_config_text()
+        if config_path is None
+        else config_path.read_text(encoding="utf-8")
+    )
     try:
         raw = yaml.safe_load(source)
     except yaml.YAMLError as exc:
@@ -248,7 +349,10 @@ def load_config(path: str | Path | None = None) -> PipelineConfig:
         raise ValueError(f"invalid YAML in {source_name}: {exc}") from exc
     if not isinstance(raw, dict):
         raise ValueError("configuration root must be a mapping")
-    return parse_config(raw)
+    return parse_config(
+        raw,
+        base_dir=None if config_path is None else config_path.parent,
+    )
 
 
 def write_example_config(

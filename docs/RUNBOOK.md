@@ -24,6 +24,10 @@ forest-change validate-config --config project.yaml
 Keep both date windows in the same season. Reduce the area for the first run if
 the export would be too large.
 
+For an exact boundary instead of a rectangle, set `region.geojson_path` to a
+Polygon or MultiPolygon GeoJSON file. The included `configs/geojson_example.yaml`
+shows the format. Validate the configuration before starting any Earth Engine task.
+
 ## 3. Authenticate and export
 
 Create or select a Google Cloud project with Earth Engine enabled, then run:
@@ -49,11 +53,13 @@ forest-change workflow `
   --after-imagery data/raw/rondonia-pilot_after_sentinel2.tif `
   --after-labels data/raw/rondonia-pilot_after_forest_label.tif `
   --config project.yaml `
-  --output outputs/rondonia
+  --output outputs/rondonia `
+  --hash-inputs
 ```
 
 The workflow writes the NDVI results, prepared tiles, best checkpoint, test
-metrics, two forest predictions, the clearing mask, and an interactive HTML map.
+metrics, two forest predictions, the clearing mask, an interactive HTML map,
+reproducibility metadata, and `screening_report.md`.
 
 ## 5. Validate the largest clearing patches
 
@@ -80,5 +86,6 @@ evidence rather than field verification.
 - Compare the U-Net against the NDVI baseline on the same valid test pixels.
 - Review false positives around rivers, shadows, plantations, and clouds.
 - Open the change map and inspect every large clearing patch.
-- Replace all `TBD` values in the README only with measured real-data results.
+- Preserve reviewer decisions and links to supporting imagery outside the generated files.
+- Report results as potential change until independent evidence and expert review agree.
 

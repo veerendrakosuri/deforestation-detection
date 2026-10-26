@@ -70,6 +70,34 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "longitudes"):
             parse_config(raw)
 
+    def test_inline_geojson_polygon_is_supported(self) -> None:
+        raw = self.complete_config()
+        raw["region"] = {
+            "name": "polygon",
+            "geojson": {
+                "type": "Polygon",
+                "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+            },
+        }
+        config = parse_config(raw)
+        self.assertIsNone(config.region.bbox_wgs84)
+        self.assertEqual(config.region.geojson["type"], "Polygon")
+
+    def test_region_rejects_multiple_aoi_sources(self) -> None:
+        raw = self.complete_config()
+        raw["region"]["geojson"] = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+        }
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            parse_config(raw)
+
+    def test_rejects_non_list_bbox(self) -> None:
+        raw = self.complete_config()
+        raw["region"]["bbox_wgs84"] = "not-a-box"
+        with self.assertRaisesRegex(ValueError, "list of four"):
+            parse_config(raw)
+
 
 if __name__ == "__main__":
     unittest.main()

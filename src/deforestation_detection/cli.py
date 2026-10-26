@@ -60,13 +60,20 @@ def run_validate_config(args: argparse.Namespace) -> None:
     from .config import load_config
 
     config = load_config(args.config)
+    region: dict[str, object] = {
+        "name": config.region.name,
+        "type": "bbox" if config.region.bbox_wgs84 is not None else "geojson",
+    }
+    if config.region.bbox_wgs84 is not None:
+        region["bbox_wgs84"] = list(config.region.bbox_wgs84)
+    else:
+        region["geojson_type"] = config.region.geojson["type"]
+        region["geojson_path"] = config.region.geojson_path
+
     summary = {
         "valid": True,
         "project": config.name,
-        "region": {
-            "name": config.region.name,
-            "bbox_wgs84": list(config.region.bbox_wgs84),
-        },
+        "region": region,
         "before": {
             "start": config.imagery.before.start,
             "end": config.imagery.before.end,
@@ -80,6 +87,15 @@ def run_validate_config(args: argparse.Namespace) -> None:
         "model": config.training.model,
     }
     print(json.dumps(summary, indent=2))
+
+
+def run_report(args: argparse.Namespace) -> None:
+    """Create a human-readable report from workflow result JSON."""
+
+    from .report import write_workflow_report
+
+    destination = write_workflow_report(args.results, args.output)
+    print(json.dumps({"report": str(destination)}, indent=2))
 
 
 def run_doctor(args: argparse.Namespace) -> int:
@@ -331,10 +347,23 @@ def run_workflow(args: argparse.Namespace) -> None:
     from .geospatial import run_change_detection, run_ndvi_baseline
     from .inference import predict_geotiff
     from .prepare import prepare_dataset
+    from .provenance import workflow_provenance
+    from .report import build_workflow_report
     from .train import train_model
     from .visualize import create_change_map
 
     config = load_config(args.config)
+    provenance = workflow_provenance(
+        config,
+        config_path=args.config,
+        inputs={
+            "before_imagery": args.before_imagery,
+            "before_labels": args.before_labels,
+            "after_imagery": args.after_imagery,
+            "after_labels": args.after_labels,
+        },
+        hash_inputs=args.hash_inputs,
+    )
     root = Path(args.output)
     baseline_before = run_ndvi_baseline(
         args.before_imagery,
@@ -398,6 +427,7 @@ def run_workflow(args: argparse.Namespace) -> None:
         cleared_hectares=float(change_result["cleared_hectares"]),
     )
     result = {
+        "provenance": provenance,
         "baseline_before": baseline_before,
         "baseline_after": baseline_after,
         "dataset": dataset_summary.to_dict(),
@@ -407,6 +437,9 @@ def run_workflow(args: argparse.Namespace) -> None:
         "change": change_result,
         "map": str(map_path),
     }
+    report_path = root / "screening_report.md"
+    result["report"] = str(report_path)
+    report_path.write_text(build_workflow_report(result), encoding="utf-8")
     _write_json(root / "workflow_results.json", result)
     print(json.dumps(result, indent=2))
 
@@ -446,6 +479,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Return a failure status unless every feature group is available",
     )
     doctor.set_defaults(handler=run_doctor)
+
+    report = subparsers.add_parser(
+        "report", help="Create a Markdown report from workflow result JSON"
+    )
+    report.add_argument(
+        "--results",
+        default="outputs/workflow/workflow_results.json",
+        help="Path to workflow_results.json",
+    )
+    report.add_argument(
+        "--output",
+        help="Output Markdown path; defaults beside the result JSON",
+    )
+    report.set_defaults(handler=run_report)
 
     baseline = subparsers.add_parser("baseline", help="Create an NDVI forest mask")
     baseline.add_argument("--red", required=True, help="Path to a red-band .npy array")
@@ -546,6 +593,11 @@ def build_parser() -> argparse.ArgumentParser:
     workflow.add_argument("--config", help="Configuration path; defaults to bundled example")
     workflow.add_argument("--output", default="outputs/workflow")
     workflow.add_argument("--device", default="auto")
+    workflow.add_argument(
+        "--hash-inputs",
+        action="store_true",
+        help="Record SHA-256 input hashes for audit-sensitive runs",
+    )
     workflow.set_defaults(handler=run_workflow)
 
     return parser

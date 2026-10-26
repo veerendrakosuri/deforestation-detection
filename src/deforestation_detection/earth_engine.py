@@ -53,11 +53,28 @@ def _mask_sentinel2(image: Any, bands: tuple[str, ...]) -> Any:
     return image.updateMask(mask).select(list(bands)).multiply(0.0001).toFloat()
 
 
+def region_geometry(config: PipelineConfig) -> Any:
+    """Build an Earth Engine region from a bounding box or GeoJSON AOI."""
+
+    ee = _ee()
+    if config.region.bbox_wgs84 is not None:
+        return ee.Geometry.BBox(*config.region.bbox_wgs84)
+
+    geojson = config.region.geojson
+    if geojson is None:  # Defensive check for externally constructed configs.
+        raise ValueError("configured region has no geometry")
+    if geojson["type"] == "Feature":
+        return ee.Geometry(geojson["geometry"])
+    if geojson["type"] == "FeatureCollection":
+        return ee.FeatureCollection(geojson).geometry()
+    return ee.Geometry(geojson)
+
+
 def sentinel2_composite(config: PipelineConfig, window: DateWindow) -> Any:
     """Build a cloud-masked median Sentinel-2 surface-reflectance composite."""
 
     ee = _ee()
-    region = ee.Geometry.BBox(*config.region.bbox_wgs84)
+    region = region_geometry(config)
     collection = (
         ee.ImageCollection(config.imagery.collection)
         .filterBounds(region)
@@ -81,7 +98,7 @@ def dynamic_world_tree_mask(config: PipelineConfig, window: DateWindow) -> Any:
     """Create a binary tree label from median Dynamic World probability."""
 
     ee = _ee()
-    region = ee.Geometry.BBox(*config.region.bbox_wgs84)
+    region = region_geometry(config)
     probability = (
         ee.ImageCollection(config.labels.collection)
         .filterBounds(region)
@@ -104,7 +121,7 @@ def start_exports(
 
     initialize_earth_engine(project=earth_engine_project, authenticate=authenticate)
     ee = _ee()
-    region = ee.Geometry.BBox(*config.region.bbox_wgs84)
+    region = region_geometry(config)
     tasks: list[dict[str, str]] = []
 
     for period_name, window in (

@@ -1,6 +1,7 @@
 # Forest Change Toolkit
 
 [![CI](https://github.com/veerendrakosuri/deforestation-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/veerendrakosuri/deforestation-detection/actions/workflows/ci.yml)
+[![Docs](https://github.com/veerendrakosuri/deforestation-detection/actions/workflows/docs.yml/badge.svg)](https://github.com/veerendrakosuri/deforestation-detection/actions/workflows/docs.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -22,9 +23,11 @@ The PyPI distribution name is `forest-change-toolkit`; the import package remain
 - Run the complete workflow from a terminal or import individual Python functions.
 - Start with a deterministic offline demo—no account, imagery, or GPU required.
 - Keep study areas and modeling choices in validated YAML configuration.
+- Define study areas with a bounding box or a Polygon/MultiPolygon GeoJSON file.
 - Compare a transparent NDVI baseline with a trained segmentation model.
 - Preserve georeferencing through prediction, change detection, and map creation.
 - Use geographically separated train, validation, and test blocks.
+- Record configuration, software, input sizes, and optional SHA-256 hashes per run.
 
 ## Quick start
 
@@ -81,6 +84,17 @@ forest-change validate-config --config project.yaml
 Before running an export, replace the example bounding box, dates, CRS, and thresholds.
 Use comparable seasonal windows and inspect the area in Earth Engine.
 
+For an exact administrative or conservation boundary, start from the included
+GeoJSON example:
+
+```powershell
+forest-change validate-config --config configs/geojson_example.yaml
+```
+
+The `geojson_path` is resolved relative to the YAML file. Polygon, MultiPolygon,
+Feature, and polygon-only FeatureCollection objects are supported. When copying the
+example elsewhere, update its relative `geojson_path`.
+
 ## Real-data workflow
 
 Earth Engine requires a Google account, an enabled Cloud project, and Earth Engine
@@ -103,12 +117,21 @@ forest-change workflow `
   --after-imagery data/raw/after_sentinel2.tif `
   --after-labels data/raw/after_forest_label.tif `
   --config project.yaml `
-  --output outputs/my-area
+  --output outputs/my-area `
+  --hash-inputs
 ```
 
 The workflow creates baseline metrics, geographically split tiles, a trained
 checkpoint, held-out metrics, before/after forest masks, a clearing mask, area
-statistics, and an interactive HTML review map.
+statistics, an interactive HTML review map, `workflow_results.json` provenance,
+and a concise `screening_report.md`. Input hashing is optional because large
+GeoTIFFs can take time to hash.
+
+Regenerate the report without rerunning the model:
+
+```powershell
+forest-change report --results outputs/my-area/workflow_results.json
+```
 
 ## CLI commands
 
@@ -117,6 +140,7 @@ statistics, and an interactive HTML review map.
 | `init` | Write an editable configuration |
 | `validate-config` | Validate and summarize configuration |
 | `doctor` | Check installed feature groups |
+| `report` | Build a Markdown screening report from workflow results |
 | `demo` | Run an offline synthetic example |
 | `baseline` | Create an NDVI mask from NumPy arrays |
 | `change` | Compare two NumPy forest masks |
@@ -131,6 +155,19 @@ statistics, and an interactive HTML review map.
 
 Both `forest-change` and the backwards-compatible `deforestation-detection` command
 invoke the same CLI. See [the CLI reference](docs/CLI_REFERENCE.md) for examples.
+
+## Container
+
+Tagged releases publish a CPU container to the GitHub Container Registry. It can
+run the CLI without a local Python installation:
+
+```powershell
+docker run --rm ghcr.io/veerendrakosuri/deforestation-detection:latest --version
+```
+
+Mount local inputs and outputs under `/work` for real runs. See the
+[operations guide](docs/OPERATIONS.md) for a complete example and production
+review checklist.
 
 ## Python API
 
