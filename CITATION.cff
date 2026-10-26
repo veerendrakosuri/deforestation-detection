@@ -6,7 +6,7 @@ authors:
   - family-names: Kosuri
     given-names: Veerendra
     alias: veerendrakosuri
-version: 0.3.0
+version: 0.3.1
 date-released: 2026-10-26
 repository-code: "https://github.com/veerendrakosuri/deforestation-detection"
 url: "https://github.com/veerendrakosuri/deforestation-detection"

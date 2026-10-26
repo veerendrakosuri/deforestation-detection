@@ -23,7 +23,7 @@ docker run --rm `
   --hash-inputs
 ```
 
-Use an immutable version tag such as `0.3.0` for production runs. The `latest`
+Use an immutable version tag such as `0.3.1` for production runs. The `latest`
 tag is convenient for evaluation but may change.
 
 ## A safe recurring workflow

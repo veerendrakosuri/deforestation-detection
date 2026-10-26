@@ -4,6 +4,13 @@ All notable user-facing changes are documented here.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-26
+
+### Fixed
+
+- Container publishing now initializes the Buildx driver required for GitHub
+  Actions cache export.
+
 ## [0.3.0] - 2026-10-26
 
 ### Added
@@ -43,7 +50,8 @@ All notable user-facing changes are documented here.
 - Initial Sentinel-2 export, preparation, U-Net training, prediction, change detection,
   mapping, validation, synthetic smoke test, and Rondônia pilot report.
 
-[Unreleased]: https://github.com/veerendrakosuri/deforestation-detection/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/veerendrakosuri/deforestation-detection/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/veerendrakosuri/deforestation-detection/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/veerendrakosuri/deforestation-detection/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/veerendrakosuri/deforestation-detection/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/veerendrakosuri/deforestation-detection/releases/tag/v0.1.0

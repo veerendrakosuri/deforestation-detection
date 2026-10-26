@@ -14,5 +14,5 @@ __all__ = [
     "remove_small_patches",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
